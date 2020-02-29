@@ -175,6 +175,61 @@ class Helper extends Database {
 		return $result;
 	}
 
+	private function get_distance($lat1, $lon1, $lat2, $lon2, $unit) {
+		if (($lat1 == $lat2) && ($lon1 == $lon2)) {
+	    	return 0;
+	  	} else {
+	    	$theta = $lon1 - $lon2;
+	    	$dist = sin(deg2rad($lat1)) * sin(deg2rad($lat2)) +  cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta));
+	    	$dist = acos($dist);
+	    	$dist = rad2deg($dist);
+	    	$miles = $dist * 60 * 1.1515;
+	    	$unit = strtoupper($unit);
+	    	// M = meter
+	    	if ($unit == "M") {
+	      		return ($miles * 1609.34);
+	    	} else if ($unit == "N") {
+	      		return ($miles * 0.000621371);
+	    	} else {
+	     		 return $miles;
+	    	}
+	  	}
+	}
+
+	public function get_location_distance($way_point, $lat_lng1, $lat_lng2) {
+		$lat_lng1 = json_decode($lat_lng1);
+		$lat_lng2 = json_decode($lat_lng2);
+		$start = false;
+		$distance = 0;
+		$end_latLng = null;
+
+		foreach ($way_point as $key => $way_lat_lang) {
+
+			if ($start) {
+				$prev_latLng = $way_point[$key-1];
+				$distance += $this->get_distance($prev_latLng->lat, $prev_latLng->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+				if ($this->get_distance($end_latLng->lat, $end_latLng->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+					break;
+				}
+			}
+
+			if (!$start) {
+
+				if ($this->get_distance($lat_lng1->lat, $lat_lng1->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+					$start = true;
+					$distance += $this->get_distance($lat_lng1->lat, $lat_lng1->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+					$end_latLng = $lat_lng2;
+				}
+				if ($this->get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+					$start = true;
+					$distance += get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+					$end_latLng = $lat_lng1;
+				}
+			}
+		}
+		return $distance;
+	}
+
 }
 
 

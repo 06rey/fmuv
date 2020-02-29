@@ -321,20 +321,35 @@ class Booking extends Response {
 
 	private function get_traveling_trip($data = "") {
 		$sql = "SELECT * FROM seat 
-					INNER JOIN booking ON seat.booking_id = booking.booking_id
-					INNER JOIN trip ON booking.trip_id = trip.trip_id
-					INNER JOIN route ON trip.route_id = route.route_id
+					JOIN booking ON seat.booking_id = booking.booking_id
+					JOIN trip ON booking.trip_id = trip.trip_id
+					JOIN route ON trip.route_id = route.route_id
+					JOIN uv_unit ON trip.uv_id = uv_unit.uv_id
+					JOIN employee ON trip.driver_id = employee.employee_id
 				WHERE booking.passenger_id = $data[passenger_id]
 					AND trip.status = 'Traveling'
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
+
+
 		if (count($res) > 0) {
+			$res[0]['uv_distance'] = $this->helper->get_location_distance(json_decode($res[0]['way_point']), $res[0]['current_location'], $res[0]['pick_up_loc'])/1000;
+
 			$res[0]['way_point'] = json_decode($res[0]['way_point']);
 			$res[0]['current_location'] = json_decode($res[0]['current_location']);
 			$res[0]['origin_lat_lng'] = json_decode($res[0]['origin_lat_lng']);
 			$res[0]['destination_lat_lng'] = json_decode($res[0]['destination_lat_lng']);
 			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
 			$res[0]['type'] = "get_trip";
+			$res[0]["last_online"] = date("g:i A", strtotime($res[0]["last_online"]));
+			$res[0]["vacant_seat"] = $this->helper->get_no_of_available_seat($res[0]["trip_id"]);
+
+			if ($res[0]['is_online'] == 0) {
+				$res[0]['is_online'] = 'OFFLINE';
+			} else {
+				$res[0]['is_online'] = 'ONLINE';
+			}
+
 			$this->set_response_body($res);
 		} else {
 			$this->set_error_data();
@@ -349,6 +364,7 @@ class Booking extends Response {
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
 		if (count($res) > 0) {
+
 			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
 			$res[0]['type'] = "pick_up";
 			$this->set_response_body($res);
@@ -359,14 +375,32 @@ class Booking extends Response {
 	}
 
 	private function van_location($data = "") {
-		$sql = "SELECT current_location
-				FROM trip
-				WHERE trip_id = $data[trip_id]
+		$sql = "SELECT * FROM seat 
+				JOIN booking ON seat.booking_id = booking.booking_id
+				JOIN trip ON booking.trip_id = trip.trip_id
+				JOIN route ON trip.route_id = route.route_id
+				WHERE trip.trip_id = $data[trip_id]
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
 		if (count($res) > 0) {
-			$res[0]['current_location'] = json_decode($res[0]['current_location']);
+
 			$res[0]['type'] = "van_loc";
+			$res[0]["vacant_seat"] = $this->helper->get_no_of_available_seat($data[trip_id]);
+			$res[0]['uv_distance'] = $this->helper->get_location_distance(json_decode($res[0]['way_point']), $res[0]['current_location'], $res[0]['pick_up_loc'])/1000;
+			$res[0]["last_online"] = date("g:i A", strtotime($res[0]["last_online"]));
+			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
+			$res[0]['current_location'] = json_decode($res[0]['current_location']);
+
+			if ($res[0]['is_online'] == 0) {
+				$res[0]['is_online'] = 'OFFLINE';
+			} else {
+				$res[0]['is_online'] = 'ONLINE';
+			}
+
+			unset($res[0]['origin_lat_lng']);
+			unset($res[0]['destination_lat_lng']);
+			unset($res[0]['way_point']);
+
 			$this->set_response_body($res);
 		} else {
 			$this->set_error_data();
