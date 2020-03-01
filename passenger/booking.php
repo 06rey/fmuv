@@ -239,6 +239,10 @@ class Booking extends Response {
 		$sql = "SELECT * FROM seat WHERE booking_id = $data[book_id]";
 		$res = $this->fetch_data($sql);
 		$res[0]['type'] = 'passenger_list';
+		foreach ($res as $key => $value) {
+			unset($res[$key]['pick_up_loc']);
+			unset($res[$key]['drop_off_loc']);
+		}
 		$this->set_response_body($res);
 		return $this->response;
 	}
@@ -418,7 +422,7 @@ class Booking extends Response {
 				FROM booking JOIN trip ON booking.trip_id = trip.trip_id
 				JOIN route ON trip.route_id = route.route_id
 				WHERE booking.passenger_id = $data[passenger_id]
-				AND trip.status != 'Cancelled'";
+				AND trip.status = 'Arrived'";
 		$res = $this->fetch_data($sql);
 		if (count($res)) {
 			foreach ($res as $key => $value) {

@@ -271,11 +271,6 @@ class Route extends Response {
 				if (count($res) > 0) {
 					array_push($conflict, ["type"=>"conflict"]);
 					foreach ($res as $key => $value) {
-						if ($value["head"] == "Back") {
-							$temp = $value['origin'];
-							$value['origin'] = $value['destination'];
-							$value['destination'] = $temp;
-						}
 						$value['depart_time'] = date("g:i A", strtotime($value["depart_time"]));
 						array_push($conflict, $value);
 					}
@@ -318,9 +313,6 @@ class Route extends Response {
 				$way_point = json_decode($val['way_point']);
 				$uv_loc= json_decode($value['current_location']);
 				$size = count($way_point);
-				if ($value['head'] == 'Back') {
-					$way_point = array_reverse($way_point);
-				}
 
 				$uv_temp = 500;
 				$user_temp = 500;
@@ -400,7 +392,12 @@ class Route extends Response {
 					FROM seat INNER JOIN booking ON seat.booking_id = booking.booking_id
 						INNER JOIN trip ON booking.trip_id = trip.trip_id
 					WHERE trip.trip_id = $data[trip_id]";
-			$result[0]['pick_up_loc'] = $this->fetch_data($sql)[0]['loc'];
+			if ($this->fetch_data($sql)[0]['loc'] == "Terminal") {
+				$result[0]['pick_up_mode'] = "Terminal";
+			} else {
+				$result[0]['pick_up_mode'] = "On_way";
+			}
+			$result[0]['pick_up_loc'] = json_decode($this->fetch_data($sql)[0]['loc']);
 			$result[0]["type"] = "route";
 		}
 
@@ -463,13 +460,6 @@ class Route extends Response {
 					GROUP BY route.route_id";
 		}
 		$result = $this->fetch_data($sql);
-		if (isset($data['type'])) {
-			if ($data['head'] == 'Back') {
-				$data['head'] = $result[0]['origin'];
-			} else {
-				$data['head'] = $result[0]['destination'];
-			}
-		}
 		$route = array();
 		array_push($route, ['type'=>'way_point']);
 
@@ -548,7 +538,7 @@ class Route extends Response {
 					}
 				}
 
-				$result[$key]['way_point'] = array();
+				unset($result[$key]['way_point']);
 				$result[$key]['pick_up_point_line'] = $pick_up_point;
 				$result[$key]['from_origin'] = $from_origin;
 				$result[$key]['to_destination'] = $to_destination;

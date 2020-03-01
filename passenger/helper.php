@@ -222,7 +222,7 @@ class Helper extends Database {
 				}
 				if ($this->get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
 					$start = true;
-					$distance += get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+					$distance += $this->get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
 					$end_latLng = $lat_lng1;
 				}
 			}
