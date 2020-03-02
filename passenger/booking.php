@@ -330,6 +330,7 @@ class Booking extends Response {
 					JOIN route ON trip.route_id = route.route_id
 					JOIN uv_unit ON trip.uv_id = uv_unit.uv_id
 					JOIN employee ON trip.driver_id = employee.employee_id
+					JOIN company ON uv_unit.company_id = company.company_id
 				WHERE booking.passenger_id = $data[passenger_id]
 					AND trip.status = 'Traveling'
 				LIMIT 1";
@@ -347,6 +348,7 @@ class Booking extends Response {
 			$res[0]['type'] = "get_trip";
 			$res[0]["last_online"] = date("g:i A", strtotime($res[0]["last_online"]));
 			$res[0]["vacant_seat"] = $this->helper->get_no_of_available_seat($res[0]["trip_id"]);
+			$res[0]['pick_up_mode'] = "On_way";
 
 			if ($res[0]['is_online'] == 0) {
 				$res[0]['is_online'] = 'OFFLINE';
@@ -379,6 +381,7 @@ class Booking extends Response {
 	}
 
 	private function van_location($data = "") {
+
 		$sql = "SELECT * FROM seat 
 				JOIN booking ON seat.booking_id = booking.booking_id
 				JOIN trip ON booking.trip_id = trip.trip_id
@@ -388,12 +391,19 @@ class Booking extends Response {
 		$res = $this->fetch_data($sql);
 		if (count($res) > 0) {
 
+			// For testing only --------------------------------------------
+			$this->helper->set_driver_online(); 
+			// --------------------------------------------------------------
+
+			$res[0]['is_online'] = $this->helper->check_driver_status($res[0]['trip_id']);
+
 			$res[0]['type'] = "van_loc";
-			$res[0]["vacant_seat"] = $this->helper->get_no_of_available_seat($data[trip_id]);
+			$res[0]["vacant_seat"] = $this->helper->get_no_of_available_seat($data['trip_id']);
 			$res[0]['uv_distance'] = $this->helper->get_location_distance(json_decode($res[0]['way_point']), $res[0]['current_location'], $res[0]['pick_up_loc'])/1000;
 			$res[0]["last_online"] = date("g:i A", strtotime($res[0]["last_online"]));
 			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
 			$res[0]['current_location'] = json_decode($res[0]['current_location']);
+			$res[0]['pick_up_mode'] = "On_way";
 
 			if ($res[0]['is_online'] == 0) {
 				$res[0]['is_online'] = 'OFFLINE';

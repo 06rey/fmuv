@@ -238,6 +238,12 @@ class Route extends Response {
 	}
 
 	private function traveling_trip($data = "") {
+		// For testing only --------------------------------------------
+		$this->helper->set_driver_online(); 
+		// --------------------------------------------------------------
+
+		$this->helper->update_all_trip_status();
+
 		$data['route_list'] = "";
 		for ($i=1; $i<$data['size']; $i++) {
 			$data['route_list'] = $data['route_list'].$data['route_id'.$i];
@@ -354,6 +360,7 @@ class Route extends Response {
 		if (count($result) < 2) {
 			$result = [["status"=>"No result"]];
 		}
+
 		$this->set_response_body($result);
 		return $this->response;
 	}
@@ -430,7 +437,6 @@ class Route extends Response {
 			$result[0]['current_location'] = json_decode($result[0]['current_location']);
 			$data['lat'] = $pick_up_point->lat;
 			$data['lng'] = $pick_up_point->lng;
-			$data['head'] = $result[0]['head'];
 			$data['type'] = 'get_route';
 			$arr = [];
 			array_push($arr, ['type'=>'route']);
@@ -506,10 +512,8 @@ class Route extends Response {
 					if (!$found) {
 						if ($data['head'] == $value['destination']) {
 							array_push($from_origin, $val);
-							$result[$key]['head'] = "Forth";
 						} else {
 							array_push($to_destination, $val);
-							$result[$key]['head'] = "Back";
 						}
 					} else {
 						if ($data['head'] == $value['destination']) {

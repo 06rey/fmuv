@@ -37,6 +37,12 @@ class Util {
 		return $new_date->format('Y-m-d H:i:s');
 	}
 
+	public function minus_current_date($date = "", $hours = "", $minutes = "", $seconds = "") {
+		$new_date = new \DateTime($date);
+		$new_date->modify('-'.$hours.' hour -'.$minutes.' minutes -'.$seconds.' seconds');
+		return $new_date->format('Y-m-d H:i:s');
+	}
+
 	public function validate_session($expire = "") {
 		if ($expire < date('Y-m-d H:i:s')) {
 			return 0;

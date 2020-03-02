@@ -2,13 +2,16 @@
 
 defined('BASEPATH') OR die(header('HTTP/1.1 503 Service Unavailable.', TRUE, 503));
 
+require_once("util.php");
 
 class Helper extends Database {
 
 	private $MAX_SEAT = 14;
+	private $util;
 
 	function __construct() {
 		$this->dbConnection();
+		$this->util = new Util();
 	}
 
 	public function get_no_of_available_seat($trip_id = ""){
@@ -46,7 +49,8 @@ class Helper extends Database {
 	public function time_diff($t1 = "", $t2 = "") {
 		$date1 = strtotime($t1);  
 		$date2 = strtotime($t2);  
-		$diff = abs($date2 - $date1); 
+		$diff = abs($date2 - $date1);
+		// Return time difference in second
 		return $diff;
 	}
 
@@ -196,9 +200,9 @@ class Helper extends Database {
 	  	}
 	}
 
-	public function get_location_distance($way_point, $lat_lng1, $lat_lng2) {
-		$lat_lng1 = json_decode($lat_lng1);
-		$lat_lng2 = json_decode($lat_lng2);
+	public function get_location_distance($way_point, $van_location, $passenger_location) {
+		$van_location = json_decode($van_location);
+		$passenger_location = json_decode($passenger_location);
 		$start = false;
 		$distance = 0;
 		$end_latLng = null;
@@ -208,26 +212,78 @@ class Helper extends Database {
 			if ($start) {
 				$prev_latLng = $way_point[$key-1];
 				$distance += $this->get_distance($prev_latLng->lat, $prev_latLng->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
-				if ($this->get_distance($end_latLng->lat, $end_latLng->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+				if ($this->get_distance($end_latLng->lat, $end_latLng->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 100) {
 					break;
 				}
 			}
 
 			if (!$start) {
 
-				if ($this->get_distance($lat_lng1->lat, $lat_lng1->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+				if ($this->get_distance($van_location->lat, $van_location->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 100) {
 					$start = true;
-					$distance += $this->get_distance($lat_lng1->lat, $lat_lng1->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
-					$end_latLng = $lat_lng2;
+					$distance += $this->get_distance($van_location->lat, $van_location->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+					$end_latLng = $passenger_location;
 				}
-				if ($this->get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 50) {
+				if ($this->get_distance($passenger_location->lat, $passenger_location->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M') < 100) {
 					$start = true;
-					$distance += $this->get_distance($lat_lng2->lat, $lat_lng2->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
-					$end_latLng = $lat_lng1;
+					$distance += $this->get_distance($passenger_location->lat, $passenger_location->lng, $way_lat_lang->lat, $way_lat_lang->lng, 'M');
+					$end_latLng = $van_location;
 				}
 			}
 		}
 		return $distance;
+	}
+
+	public function check_driver_status($trip_id = "") {
+		// Check driver online status first. If is current time - last_online time > 60 seconds set driver online status to offline
+		// Note! driver online status is updated every 10 seconds by driver app
+		if ($this->time_diff(date('Y-m-d H:i:s'), $this->get_driver_last_online($trip_id)) > 60) {
+			$this->set_driver_to_offline($trip_id);
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	public function get_driver_last_online($trip_id = "") {
+		$sql = "SELECT last_online FROM trip
+				WHERE trip_id = $trip_id";
+		return $this->fetch_data($sql)[0]['last_online'];
+	}
+
+	public function set_driver_to_offline($trip_id = "") {
+		$sql = "UPDATE trip
+				SET is_online = 0
+				WHERE trip_id = $trip_id";
+		$this->execute_query($sql);
+	}
+
+
+	public function update_all_trip_status() {
+
+		$sql = "SELECT * FROM trip
+				WHERE status = 'Traveling'";
+		$trip = $this->fetch_data($sql);
+		foreach ($trip as $key => $value) {
+			$date = $this->util->minus_current_date(date('Y-m-d H:i:s'), 0, 1, 0);
+			$sql = "UPDATE trip
+					SET is_online = 0
+					WHERE last_online < '$date'
+					AND status = 'Traveling'";
+			$this->execute_query($sql);
+		}
+	}
+
+
+
+	// Simulate driver online status.. For testing purpose only
+	public function set_driver_online() {
+		$date = date('Y-m-d H:i:s');
+		$sql = "UPDATE trip 
+				SET is_online = 1,
+					last_online = '$date'
+				WHERE status = 'Traveling'";
+		$this->execute_query($sql);
 	}
 
 }
