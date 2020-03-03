@@ -146,48 +146,57 @@ class Booking extends Response {
 	}
 
 	public function save_booking($data = ""){
-		$time_stamp = date("Y-m-d H:i:s");
-		$sql = "INSERT INTO booking VALUES(
-										booking_id,
-										$data[no_of_passenger],
-										$data[amount],
-										'$data[pass_type]',
-										'$time_stamp',
-										'$data[notes]',
-										'$data[im_a_passenger]',
-										'$data[device_id]',
-										$data[trip_id],
-										$data[passenger_id]
-									)";
-		$my_id = $this->get_insert_id($sql);
 
-		if ($my_id > 0){  
-			if ($data["boarding_point"] == "Pick_up"){
-				$pick_up_loc = json_encode(array("lat"=>$data["locLat"], "lng"=>$data["locLng"]));
-			}else{
-				$pick_up_loc = "Terminal";
-			}
-
-			for ($a=1; $a<=$data["no_of_passenger"]; $a++){
-				$boarding_pass = "UV-$data[trip_id]-".$data["seat$a"];
-				$fullname = $data["fname$a"]." ".$data["lname$a"];
-				$sql = "INSERT INTO seat VALUES(
-											seat_id,
-											'$boarding_pass',
-											'$fullname',
-											'".$data["contact$a"]."',
-											".$data["seat$a"].",
-											'$pick_up_loc',
-											'',
-											'waiting',
-											$my_id
-										)";
-				$this->execute_query($sql);
-			}
+		if ($res = $this->fetch_data("
+				SELECT status FROM trip
+				WHERE trip_id = $data[trip_id]
+			")[0]['status'] == 'Cancelled') {
 			$this->helper->delete_booking_queue($data["queue_id"]);
-			$this->set_response_body([["status"=>"success", "type"=>"save_booking"]]);
-		}else{
-			$this->set_error_data();
+			$this->set_response_body([['type'=>'trip_status', "status"=>'Cancelled']]);
+		} else {
+			$time_stamp = date("Y-m-d H:i:s");
+			$sql = "INSERT INTO booking VALUES(
+											booking_id,
+											$data[no_of_passenger],
+											$data[amount],
+											'$data[pass_type]',
+											'$time_stamp',
+											'$data[notes]',
+											'$data[im_a_passenger]',
+											'$data[device_id]',
+											$data[trip_id],
+											$data[passenger_id]
+										)";
+			$my_id = $this->get_insert_id($sql);
+
+			if ($my_id > 0){  
+				if ($data["boarding_point"] == "Pick_up"){
+					$pick_up_loc = json_encode(array("lat"=>$data["locLat"], "lng"=>$data["locLng"]));
+				}else{
+					$pick_up_loc = "Terminal";
+				}
+
+				for ($a=1; $a<=$data["no_of_passenger"]; $a++){
+					$boarding_pass = "UV-$data[trip_id]-".$data["seat$a"];
+					$fullname = $data["fname$a"]." ".$data["lname$a"];
+					$sql = "INSERT INTO seat VALUES(
+												seat_id,
+												'$boarding_pass',
+												'$fullname',
+												'".$data["contact$a"]."',
+												".$data["seat$a"].",
+												'$pick_up_loc',
+												'',
+												'waiting',
+												$my_id
+											)";
+					$this->execute_query($sql);
+				}
+				$this->helper->delete_booking_queue($data["queue_id"]);
+				$this->set_response_body([["status"=>"success", "type"=>"save_booking"]]);
+			}else{
+				$this->set_error_data();
+			}
 		}
 		return $this->response;
 	}
@@ -332,10 +341,10 @@ class Booking extends Response {
 					JOIN employee ON trip.driver_id = employee.employee_id
 					JOIN company ON uv_unit.company_id = company.company_id
 				WHERE booking.passenger_id = $data[passenger_id]
+					AND seat.boarding_status = 'on_board'
 					AND trip.status = 'Traveling'
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
-
 
 		if (count($res) > 0) {
 			$res[0]['uv_distance'] = $this->helper->get_location_distance(json_decode($res[0]['way_point']), $res[0]['current_location'], $res[0]['pick_up_loc'])/1000;
@@ -430,10 +439,13 @@ class Booking extends Response {
 						route.fare,
 						route.origin,
 						route.destination
-				FROM booking JOIN trip ON booking.trip_id = trip.trip_id
+				FROM seat JOIN booking ON seat.booking_id = booking.booking_id
+				JOIN trip ON booking.trip_id = trip.trip_id
 				JOIN route ON trip.route_id = route.route_id
 				WHERE booking.passenger_id = $data[passenger_id]
-				AND trip.status = 'Arrived'";
+				AND trip.status = 'Arrived'
+				OR seat.boarding_status = 'dropped'
+				GROUP BY trip.trip_id";
 		$res = $this->fetch_data($sql);
 		if (count($res)) {
 			foreach ($res as $key => $value) {
@@ -448,6 +460,16 @@ class Booking extends Response {
 		} else {
 			$this->set_error_data();
 		}
+		return $this->response;
+	}
+
+	private function chect_trip_status($data = "") {
+		$res = $this->fetch_data("
+				SELECT status FROM trip
+				WHERE trip_id = $data[trip_id]
+			");
+		$res[0]['type'] = 'trip_status';
+		$this->set_response_body($res);
 		return $this->response;
 	}
 }
