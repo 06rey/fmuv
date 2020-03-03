@@ -161,7 +161,7 @@ class Booking extends Response {
 									)";
 		$my_id = $this->get_insert_id($sql);
 
-		if ($my_id > 0){
+		if ($my_id > 0){  
 			if ($data["boarding_point"] == "Pick_up"){
 				$pick_up_loc = json_encode(array("lat"=>$data["locLat"], "lng"=>$data["locLng"]));
 			}else{
@@ -364,7 +364,7 @@ class Booking extends Response {
 	}
 
 	private function pick_up_point($data = "") {
-		$sql = "SELECT pick_up_loc
+		$sql = "SELECT *
 				FROM seat
 				WHERE booking_id = $data[book_id]
 				LIMIT 1";
@@ -373,6 +373,7 @@ class Booking extends Response {
 
 			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
 			$res[0]['type'] = "pick_up";
+			$res[0]['pick_up_mode'] = "Way_point";
 			$this->set_response_body($res);
 		} else {
 			$this->set_error_data();
@@ -403,7 +404,7 @@ class Booking extends Response {
 			$res[0]["last_online"] = date("g:i A", strtotime($res[0]["last_online"]));
 			$res[0]['pick_up_loc'] = json_decode($res[0]['pick_up_loc']);
 			$res[0]['current_location'] = json_decode($res[0]['current_location']);
-			$res[0]['pick_up_mode'] = "On_way";
+			$res[0]['pick_up_mode'] = "Way_point";
 
 			if ($res[0]['is_online'] == 0) {
 				$res[0]['is_online'] = 'OFFLINE';

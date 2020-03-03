@@ -103,7 +103,7 @@ class Helper extends Database {
 	public function scan_booking_queue() {
 		$arr = $this->get_booking_queue();
 		foreach ($arr as $key => $value) {
-			if ($this->time_diff($value["time_stamp"], date("Y-m-d H:i:s")) > (120*$value["no_of_pass"])) {
+			if ($this->time_diff($value["time_stamp"], date("Y-m-d H:i:s")) > (100*$value["no_of_pass"])) {
 				$this->delete_booking_queue($value["queue_id"]);
 			}
 		}
