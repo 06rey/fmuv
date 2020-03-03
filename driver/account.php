@@ -30,12 +30,11 @@ class Account Extends Response {
 		if ($this->is_email_exists($data["contact"])) {
 			$password = sha1($data["pass"]);
 
-			$sql = "SELECT * FROM employee 
-					INNER JOIN comp_employee ON employee.employee_id = comp_employee.employee_id
-				WHERE comp_employee.status = 'employed' 
-					AND comp_employee.position = 'driver'
-					AND employee.contact_no = '$data[contact]'
-					AND password = '$password'";
+			$sql = "SELECT * FROM user 
+					INNER JOIN employee ON user.user_id = employee.user_id
+					WHERE employee.contact_no = '$data[contact]'
+					AND user.password = '$password'
+					AND user.role = 'driver'";
 
 			$result = $this->fetch_data($sql);
 
@@ -78,9 +77,9 @@ class Account Extends Response {
 		$current_pass = sha1($data["current_pass"]);
 		$id = $this->get_profile('employee', $data['token'])[0]['employee_id'];
 
-		$sql = "UPDATE employee 
+		$sql = "UPDATE user 
 				SET password = '$new_password' 
-				WHERE employee_id = $id AND password = '$current_pass'";
+				WHERE user_id = $id AND password = '$current_pass'";
 
 		if ($this->affected_rows($sql) > 0) {
 			$this->set_response_body([["status"=>"success", "type"=>"change_password", "pass"=>$new_password]]);
@@ -107,9 +106,7 @@ class Account Extends Response {
 
 	private function find_contact($contact = "", $id = "") {
 		$sql = "SELECT * FROM employee 
-					INNER JOIN comp_employee ON employee.employee_id = comp_employee.employee_id
-				WHERE comp_employee.status = 'employed' 
-					AND comp_employee.position = 'driver'
+				WHERE employee.role = 'driver'
 					AND employee.contact_no = '$contact'
 					AND employee.employee_id != $id";
 		return $this->is_exists($sql);
@@ -117,10 +114,8 @@ class Account Extends Response {
 
 	private function is_email_exists($contact = "") {
 		$sql = "SELECT * FROM employee 
-					INNER JOIN comp_employee ON employee.employee_id = comp_employee.employee_id
-				WHERE comp_employee.status = 'employed' 
-					AND comp_employee.position = 'driver'
-					AND employee.contact_no = '$contact'";
+				WHERE role = 'driver'
+					AND contact_no = '$contact'";
 		return $this->is_exists($sql);
 	}
 

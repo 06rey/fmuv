@@ -37,11 +37,12 @@ class Trip Extends Response {
 					   route.origin,
 					   route.destination,
 					   uv_unit.plate_no
-				FROM uv_unit INNER JOIN trip ON uv_unit.uv_id = trip.uv_id
-						  INNER JOIN route ON trip.route_id = route.route_id
-						  INNER JOIN company ON route.company_id = company.company_id
-				WHERE trip.driver_id = 6
+				FROM uv_unit JOIN trip ON uv_unit.uv_id = trip.uv_id
+				JOIN route ON trip.route_id = route.route_id
+				JOIN company ON route.company_id = company.company_id
+				WHERE trip.driver_id = $this->id
 					AND trip.status != 'Arrived'
+					AND trip.status != 'Cancelled'
 				GROUP BY trip.trip_id
 				ORDER BY trip.date, trip.depart_time";
 		$result = $this->fetch_data($sql);
@@ -50,6 +51,7 @@ class Trip Extends Response {
 				$result[$key]["depart_time"] = date("g:i A", strtotime($result[$key]["depart_time"]));
 				$result[$key]["no_of_pass"] = $this->get_number_of_passenger($result[$key]["trip_id"]);
 				$result[$key]["date"] = date_format(date_create($result[$key]["date"]), "D, M d, Y");
+				$result[$key]["current_location"] = json_decode($result[$key]["current_location"]);
 			}
 			$this->set_response_body($result);
 		} else {
@@ -98,9 +100,10 @@ class Trip Extends Response {
 				)";
 		$this->execute_query($sql);
 		$res = [
+
 			"type"      => "success", 
 			"mode"      => $data['mode'], 
-			"time_stamp"=> $time_stamp,
+			"date_time"=> $time_stamp,
 			"trip_id"	=> $data['trip_id']
 		];
 		$this->set_response_body([$res]);
