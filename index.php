@@ -62,7 +62,7 @@ function controller($class, $function, $param) {
 			case 'server_event':
 				header("Content-Type: text/event-stream");
 				header("Cache-Control: no-cache");
-	 			echo "retry: 500\n";
+	 			echo "retry: 1000\n";
 	  			echo "data: ".json_encode($obj->$class($function, $param))."\n\n\n";
 				break;
 		}

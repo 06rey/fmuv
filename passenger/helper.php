@@ -21,9 +21,11 @@ class Helper extends Database {
 	}
 
 	public function get_no_of_booked_seat($trip_id = "") {
-		$sql = "SELECT SUM(booking.no_of_passenger) as count
-				FROM booking 
-				WHERE trip_id = $trip_id";
+		$sql = "SELECT count(*) as count
+				FROM trip INNER JOIN booking ON trip.trip_id = booking.trip_id
+						  INNER JOIN seat ON booking.booking_id = seat.booking_id
+				WHERE trip.trip_id = $trip_id
+					AND seat.boarding_status != 'dropped'";
 
 		$result = $this->fetch_data($sql);
 		return $result[0]["count"] == NULL ? 0 : $result[0]["count"];
