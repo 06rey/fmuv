@@ -16,6 +16,9 @@ class Account Extends Response {
 	function account($function = "", $param = "") {
 		if ($this->dbConnection() == 200) {
 			if ($this->search_token("employee", $param['token']) < 1) {
+				if ($function == 'change_forgot_password') {
+					return $this->$function($param);
+				}
 				$this->set_token_error();
 			} else {
 				return $this->$function($param);
@@ -157,8 +160,8 @@ class Account Extends Response {
 		$code = $this->util->random_number($id);
 		$c = $code;
 		$message = "$code is your FIND ME UV password reset code";
-		//$code = sha1($code);
-		if (/*$this->util->send_message($data['contact'], $message)*/0 == 0) {
+		$code = sha1($code);
+		if ($this->util->send_message($data['contact'], $message) == 0) {
 			$date = date('Y-m-d H:i:s');
 			$sql = "INSERT INTO user_password_change
 					VALUES(
@@ -176,7 +179,7 @@ class Account Extends Response {
 	}
 
 	private function verify_account($data = "") {
-		$code = $data['code'];//sha1($data['code']);
+		$code = sha1($data['code']);
 		if ($this->is_exists("
 				SELECT * FROM user_password_change
 				WHERE change_id = $data[id]
@@ -190,8 +193,8 @@ class Account Extends Response {
 		return $this->response;
 	}
 
-	private function change_password($data = "") {
-		$new_pass = password_hash($data['pass1'], PASSWORD_DEFAULT)
+	private function change_forgot_password($data = "") {
+		$new_pass = sha1($data['pass1']);
 		$this->execute_query("
 				UPDATE user SET password = '$new_pass'
 				WHERE user_id = $data[user_id]
