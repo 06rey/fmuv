@@ -135,6 +135,71 @@ class Account Extends Response {
 		$this->execute_query($sql);
 	}
 
+	private function search_account($data = "") {
+		$res = $this->fetch_data("
+				SELECT * FROM user 
+				WHERE username = '$data[contact]'
+				AND role = 'driver'
+			");
+		if (count($res) > 0) {
+			$data['user_id'] = $res[0]['user_id'];
+			$this->send_code($data);
+		} else {
+			$this->set_error_data();
+		}
+		return $this->response;
+	}
+
+	private function send_code($data = "") {
+		$id  = $this->fetch_data("
+				SELECT max(change_id) as id FROM user_password_change
+			")[0]['id'];
+		$code = $this->util->random_number($id);
+		$c = $code;
+		$message = "$code is your FIND ME UV password reset code";
+		//$code = sha1($code);
+		if (/*$this->util->send_message($data['contact'], $message)*/0 == 0) {
+			$date = date('Y-m-d H:i:s');
+			$sql = "INSERT INTO user_password_change
+					VALUES(
+						change_id,
+						'$code',
+						'$date',
+						$data[user_id]
+					)";
+			$id = $this->get_insert_id($sql);
+			$this->set_response_body([["status"=>"success", "type"=>"send_code", 'id'=>$id, 'contact'=>$data['contact'], "user_id"=>$data['user_id']]]);
+		} else {
+			$this->set_error_service();
+		}
+		return $this->response;
+	}
+
+	private function verify_account($data = "") {
+		$code = $data['code'];//sha1($data['code']);
+		if ($this->is_exists("
+				SELECT * FROM user_password_change
+				WHERE change_id = $data[id]
+				AND code = '$code'
+				AND user_id = $data[user_id]
+			")) {
+			$this->set_response_body([['status'=>'success', "type"=>"verify"]]);
+		} else {
+			$this->set_error_data();
+		}
+		return $this->response;
+	}
+
+	private function change_password($data = "") {
+		$new_pass = password_hash($data['pass1'], PASSWORD_DEFAULT)
+		$this->execute_query("
+				UPDATE user SET password = '$new_pass'
+				WHERE user_id = $data[user_id]
+			");
+		$this->set_response_body([['status'=>'success', 'type'=>'change_password']]);
+		return $this->response;
+	}
+
 }
 
 ?>

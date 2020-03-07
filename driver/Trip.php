@@ -352,9 +352,14 @@ class Trip Extends Response {
 				FROM over_speed_log
 				JOIN trip ON over_speed_log.trip_id = trip.trip_id
 				JOIN employee ON trip.driver_id = employee.employee_id
-				WHERE trip.driver_id = $id
+				JOIN route ON trip.route_id = route.route_id
+				WHERE trip.driver_id = $this->id
 			");
 		if (count($res) > 0) {
+			foreach ($res as $key => $value) {
+				$res[$key]["date"] = date_format(date_create($value["date_time"]), "D, M d, Y");
+				$res[$key]['time'] = date("g:i A", strtotime($value["date_time"]));
+			}
 			$this->set_response_body($res);
 		} else {
 			$this->set_error_data();
