@@ -239,7 +239,7 @@ class Route extends Response {
 
 	private function traveling_trip($data = "") {
 		// For testing only --------------------------------------------
-		$this->helper->set_driver_online(); 
+		//$this->helper->set_driver_online(); 
 		// --------------------------------------------------------------
 
 		$this->helper->update_all_trip_status();

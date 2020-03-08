@@ -237,9 +237,9 @@ class Helper extends Database {
 	}
 
 	public function check_driver_status($trip_id = "") {
-		// Check driver online status first. If is current time - last_online time > 60 seconds set driver online status to offline
+		// Check driver online status first. If current time - last_online time > 60 seconds set driver online status to offline
 		// Note! driver online status is updated every 10 seconds by driver app
-		if ($this->time_diff(date('Y-m-d H:i:s'), $this->get_driver_last_online($trip_id)) > 60) {
+		if ($this->time_diff(date('Y-m-d H:i:s'), $this->get_driver_last_online($trip_id)) > 10) {
 			$this->set_driver_to_offline($trip_id);
 			return 0;
 		} else {

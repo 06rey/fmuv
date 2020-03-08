@@ -188,6 +188,8 @@ class Booking extends Response {
 												'$pick_up_loc',
 												'',
 												'waiting',
+												'',
+												'',
 												$my_id
 											)";
 					$this->execute_query($sql);
@@ -341,7 +343,7 @@ class Booking extends Response {
 					JOIN employee ON trip.driver_id = employee.employee_id
 					JOIN company ON uv_unit.company_id = company.company_id
 				WHERE booking.passenger_id = $data[passenger_id]
-					AND seat.boarding_status = 'on_board'
+					AND seat.boarding_status != 'dropped'
 					AND trip.status = 'Traveling'
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
@@ -392,6 +394,9 @@ class Booking extends Response {
 
 	private function van_location($data = "") {
 
+		// Set trip online status to offline if last online date is 1 munite ago
+		$this->helper->update_all_trip_status();
+
 		$sql = "SELECT * FROM seat 
 				JOIN booking ON seat.booking_id = booking.booking_id
 				JOIN trip ON booking.trip_id = trip.trip_id
@@ -400,10 +405,6 @@ class Booking extends Response {
 				LIMIT 1";
 		$res = $this->fetch_data($sql);
 		if (count($res) > 0) {
-
-			// For testing only --------------------------------------------
-			$this->helper->set_driver_online(); 
-			// --------------------------------------------------------------
 
 			$res[0]['is_online'] = $this->helper->check_driver_status($res[0]['trip_id']);
 
@@ -473,6 +474,5 @@ class Booking extends Response {
 		return $this->response;
 	}
 }
-
 
 ?>

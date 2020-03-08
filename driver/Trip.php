@@ -130,11 +130,11 @@ class Trip Extends Response {
 		return $this->response;
 	}
 
-	private function update_online_state($trip_id = "") {
+	private function update_online_state($data = "") {
 		$time_stamp = date('Y-m-d H:i:s');
 		$sql = "UPDATE trip 
 				SET is_online = 1, status = 'Traveling', last_online = '$time_stamp'
-				WHERE trip_id = $trip_id";
+				WHERE trip_id = $data[trip_id]";
 		$this->execute_query($sql);
 	}
 
@@ -256,6 +256,7 @@ class Trip Extends Response {
 					)
 				");
 		}
+		$date = date('Y-m-d H:i:s');
 		$this->execute_query("
 				INSERT INTO seat
 				VALUES(
@@ -267,6 +268,8 @@ class Trip Extends Response {
 					'$location',
 					'',
 					'on_board',
+					'',
+					'$date',
 					$booking_id
 				)
 			");
@@ -368,7 +371,7 @@ class Trip Extends Response {
 	}
 
 	private function get_accident_alert() {
-
+		
 	}
 
 }

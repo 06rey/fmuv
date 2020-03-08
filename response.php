@@ -67,6 +67,20 @@ class Response extends Database {
 		$this->response["TOKEN"] = $arr;
 	}
 
+	function set_sync_response($type, $status, $data) {
+		$dataCount = count($data);
+		$this->response["DATA"]['data_status'] = array(
+			'type' 			=> $type,
+			'status' 		=> $status,
+			'data_count' 	=> $dataCount
+		); 
+		if ($dataCount > 0) {
+			$this->response["DATA"]['body'] = $data;
+		} else {
+			$this->response["DATA"]['body'] = array('msg'=>'No result');
+		}
+	}
+
 }
 
 ?>
