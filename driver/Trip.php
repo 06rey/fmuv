@@ -60,6 +60,15 @@ class Trip Extends Response {
 		return $this->response;
 	}
 
+	private function get_dropped_passenger($trip_id = "") {
+		$sql = "SELECT count(*) as count
+				FROM trip INNER JOIN booking ON trip.trip_id = booking.trip_id
+						  INNER JOIN seat ON booking.booking_id = seat.booking_id
+				WHERE trip.trip_id = $trip_id
+					AND seat.boarding_status = 'dropped'";
+		return $this->fetch_data($sql)[0]['count'];
+	}
+
 	private function get_number_of_passenger($trip_id = "") {
 		$sql = "SELECT count(*) as count
 				FROM trip INNER JOIN booking ON trip.trip_id = booking.trip_id
@@ -69,11 +78,38 @@ class Trip Extends Response {
 		return $this->fetch_data($sql)[0]['count'];
 	}
 
+
 	private function start_trip($data = "") {
 		$sql = "UPDATE trip
 				SET status = 'Traveling'
 				WHERE trip_id = $data[trip_id]";
 		$this->execute_query($sql);
+		$this->set_response_body([["mode"=>'start_trip', 'status'=>'success']]);
+		return $this->response;
+	}
+
+	private function trip_arrived($data = "") {
+		$sql = "UPDATE trip
+				SET status = 'Arrived'
+				WHERE trip_id = $data[trip_id]";
+		$this->execute_query($sql);
+
+		$dest_loc = $this->fetch_data("
+				SELECT destination_lat_lng
+				FROM route INNER JOIN trip ON route.route_id = trip.route_id
+				WHERE trip.trip_id = $data[trip_id]
+			")[0]['destination_lat_lng'];
+
+		$date = date('Y-m-d H:i:s');
+		$this->execute_query("
+				UPDATE seat INNER JOIN booking ON seat.booking_id = booking.booking_id
+				SET drop_off_loc = '$dest_loc', drop_off_time = '$date', boarding_status = 'dropped'
+				WHERE seat.boarding_status = 'on_board'
+				AND booking.trip_id = $data[trip_id]
+  			");
+
+		$this->set_response_body([["mode"=>'trip_arrived', 'status'=>'success']]);
+		return $this->response;
 	}
 
 	private function update_location($data = "") {
@@ -171,6 +207,7 @@ class Trip Extends Response {
 		foreach ($on_board as $key => $value) {
 			$arr[$key]['status'] = 'on_board';
 			$arr[$key]['seat_no'] = $on_board[$key]['seat_no'];
+			$arr[$key]['contact_no'] = $on_board[$key]['contact_no'];
 			$pick_up_loc = json_decode($on_board[$key]['pick_up_loc']);
 			$arr[$key]['pick_lat'] = $pick_up_loc->lat;
 			$arr[$key]['pick_lng'] = $pick_up_loc->lng;
@@ -179,6 +216,7 @@ class Trip Extends Response {
 		$arr = [];
 		foreach ($booked as $key => $value) {
 			$arr[$key]['status'] = 'booked';
+			$arr[$key]['contact_no'] = $booked[$key]['contact_no'];
 			$arr[$key]['seat_no'] = $booked[$key]['seat_no'];
 			$arr[$key]['booking_id'] = $booked[$key]['booking_id'];
 			$pick_up_loc = json_decode($booked[$key]['pick_up_loc']);
@@ -203,12 +241,13 @@ class Trip Extends Response {
 	}
 
 	private function seat_sql($temp = "", $trip_id) {
-		return "SELECT seat.seat_no, seat.pick_up_loc, booking.booking_id
+		return "SELECT seat.seat_no, seat.pick_up_loc, booking.booking_id, seat.contact_no
 				FROM seat INNER JOIN booking ON seat.booking_id = booking.booking_id
 				WHERE booking.trip_id = $trip_id
 					AND seat.boarding_status = '$temp'";
 	}
 
+	
 	private function drop_passenger($data = "") {
 		$location = json_encode(["lat"=>$data["lat"], "lng"=>$data["lng"]]);
 		$date = date('Y-m-d H:i:s');
@@ -338,7 +377,7 @@ class Trip Extends Response {
 		if (count($result) > 0) {
 			foreach ($result as $key => $value) {
 				$result[$key]["depart_time"] = date("g:i A", strtotime($result[$key]["depart_time"]));
-				$result[$key]["no_of_pass"] = $this->get_number_of_passenger($result[$key]["trip_id"]);
+				$result[$key]["no_of_pass"] = $this->get_dropped_passenger($result[$key]["trip_id"]);
 				$result[$key]["date"] = date_format(date_create($result[$key]["date"]), "D, M d, Y");
 				$result[$key]["current_location"] = json_decode($result[$key]["current_location"]);
 			}
