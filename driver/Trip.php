@@ -388,6 +388,22 @@ class Trip Extends Response {
 		return $this->response;
 	}
 
+	private function accident_log($data = "") {
+		$date = date('Y-m-d H:i:s');
+		$location = json_encode(['lat'=>$data['lat'], 'lng'=>$data['lng']]);
+		$this->execute_query("
+				INSERT INTO accident_log
+				VALUES(
+					accident_id,
+					'$date',
+					'$location',
+					'$data[speed]',
+					'$data[g_force]',
+					$data[trip_id]
+				)
+			");
+	}
+
 	private function get_over_speed($data = "") {
 		$res = $this->fetch_data("
 				SELECT route.route_name, over_speed_log.* 

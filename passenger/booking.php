@@ -473,6 +473,20 @@ class Booking extends Response {
 		$this->set_response_body($res);
 		return $this->response;
 	}
+
+	private function save_feedback($data = "") {
+		$date = date('Y-m-d H:i:s');
+		$this->execute_query("
+				INSERT INTO feedback VALUES(
+							feedback_id,
+							'$data[message]',
+							'$date',
+							$data[passenger_id]
+						)
+			");
+		$this->set_response_body([["type"=>"success"]]);
+		return $this->response;
+	}
 }
 
 ?>
