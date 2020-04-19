@@ -302,6 +302,8 @@ class Booking extends Response {
 										'$pick_up_loc',
 										'',
 										'waiting',
+										'',
+										'',
 										$booking_id
 									)";
 			$this->execute_query($sql);
@@ -439,13 +441,14 @@ class Booking extends Response {
 						route.route_name,
 						route.fare,
 						route.origin,
-						route.destination
+						route.destination,
+						seat.boarding_pass
 				FROM seat JOIN booking ON seat.booking_id = booking.booking_id
 				JOIN trip ON booking.trip_id = trip.trip_id
 				JOIN route ON trip.route_id = route.route_id
 				WHERE booking.passenger_id = $data[passenger_id]
-				AND trip.status = 'Arrived'
-				OR seat.boarding_status = 'dropped'
+				AND (trip.status = 'Arrived'
+				OR seat.boarding_status = 'dropped')
 				GROUP BY trip.trip_id";
 		$res = $this->fetch_data($sql);
 		if (count($res)) {

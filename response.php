@@ -1,6 +1,6 @@
 <?php
 
-defined('BASEPATH') OR die(header('HTTP/1.1 503 Service Unavailable.', TRUE, 503));
+//defined('BASEPATH') OR die(header('HTTP/1.1 503 Service Unavailable.', TRUE, 503));
 
 require_once("database.php");
 

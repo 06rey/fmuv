@@ -32,6 +32,7 @@ class Trip Extends Response {
 	}
 
 	private function get_trip($data = "") {
+		$dateTime = '2020-04-08 04:00:00';//$this->util->modify_current_date(date('Y-m-d H:i:s'), 1, 0, 0);
 		$sql = "SELECT trip.*, 
 					   company.company_name,
 					   route.origin,
@@ -43,8 +44,9 @@ class Trip Extends Response {
 				WHERE trip.driver_id = $this->id
 					AND trip.status != 'Arrived'
 					AND trip.status != 'Cancelled'
+					AND trip.query_date_time >= '$dateTime'
 				GROUP BY trip.trip_id
-				ORDER BY trip.date, trip.depart_time";
+				ORDER BY trip.date ASC, trip.depart_time ASC";
 		$result = $this->fetch_data($sql);
 		if (count($result) > 0) {
 			foreach ($result as $key => $value) {
@@ -64,8 +66,7 @@ class Trip Extends Response {
 		$sql = "SELECT count(*) as count
 				FROM trip INNER JOIN booking ON trip.trip_id = booking.trip_id
 						  INNER JOIN seat ON booking.booking_id = seat.booking_id
-				WHERE trip.trip_id = $trip_id
-					AND seat.boarding_status = 'dropped'";
+				WHERE trip.trip_id = $trip_id";
 		return $this->fetch_data($sql)[0]['count'];
 	}
 
@@ -169,9 +170,14 @@ class Trip Extends Response {
 	private function update_online_state($data = "") {
 		$time_stamp = date('Y-m-d H:i:s');
 		$sql = "UPDATE trip 
-				SET is_online = 1, status = 'Traveling', last_online = '$time_stamp'
+				SET is_online = 1, last_online = '$time_stamp'
 				WHERE trip_id = $data[trip_id]";
 		$this->execute_query($sql);
+		$res = $this->fetch_data("
+				SELECT status FROM trip WHERE trip_id = $data[trip_id]
+			");
+		$this->set_response_body([["mode"=>'trip_status', 'status'=>$res[0]['status']]]);
+		return $this->response;
 	}
 
 	private function confirm_request($data = "") {
@@ -208,20 +214,30 @@ class Trip Extends Response {
 			$arr[$key]['status'] = 'on_board';
 			$arr[$key]['seat_no'] = $on_board[$key]['seat_no'];
 			$arr[$key]['contact_no'] = $on_board[$key]['contact_no'];
-			$pick_up_loc = json_decode($on_board[$key]['pick_up_loc']);
-			$arr[$key]['pick_lat'] = $pick_up_loc->lat;
-			$arr[$key]['pick_lng'] = $pick_up_loc->lng;
+			if ($on_board[$key]['pick_up_loc'] != "Terminal"){
+				$pick_up_loc = json_decode($on_board[$key]['pick_up_loc']);
+				$arr[$key]['pick_lat'] = $pick_up_loc->lat;
+				$arr[$key]['pick_lng'] = $pick_up_loc->lng;
+			}else{
+				$arr[$key]['pick_lat'] = null;
+				$arr[$key]['pick_lng'] = null;
+			}
 			array_push($seat_info, $arr[$key]);
 		}
 		$arr = [];
-		foreach ($booked as $key => $value) {
+		foreach ($booked as $key => $value){
 			$arr[$key]['status'] = 'booked';
 			$arr[$key]['contact_no'] = $booked[$key]['contact_no'];
 			$arr[$key]['seat_no'] = $booked[$key]['seat_no'];
 			$arr[$key]['booking_id'] = $booked[$key]['booking_id'];
-			$pick_up_loc = json_decode($booked[$key]['pick_up_loc']);
-			$arr[$key]['pick_lat'] = $pick_up_loc->lat;
-			$arr[$key]['pick_lng'] = $pick_up_loc->lng;
+			if ($booked[$key]['pick_up_loc'] != "Terminal"){
+				$pick_up_loc = json_decode($booked[$key]['pick_up_loc']);
+				$arr[$key]['pick_lat'] = $pick_up_loc->lat;
+				$arr[$key]['pick_lng'] = $pick_up_loc->lng;
+			}else{
+				$arr[$key]['pick_lat'] = null;
+				$arr[$key]['pick_lng'] = null;
+			}
 			array_push($seat_info, $arr[$key]);
 		}
 
@@ -377,6 +393,7 @@ class Trip Extends Response {
 		if (count($result) > 0) {
 			foreach ($result as $key => $value) {
 				$result[$key]["depart_time"] = date("g:i A", strtotime($result[$key]["depart_time"]));
+				$result[$key]["arrival_time"] = date("g:i A", strtotime($result[$key]["arrival_time"]));
 				$result[$key]["no_of_pass"] = $this->get_dropped_passenger($result[$key]["trip_id"]);
 				$result[$key]["date"] = date_format(date_create($result[$key]["date"]), "D, M d, Y");
 				$result[$key]["current_location"] = json_decode($result[$key]["current_location"]);
@@ -391,6 +408,7 @@ class Trip Extends Response {
 	private function accident_log($data = "") {
 		$date = date('Y-m-d H:i:s');
 		$location = json_encode(['lat'=>$data['lat'], 'lng'=>$data['lng']]);
+		// Saved 
 		$this->execute_query("
 				INSERT INTO accident_log
 				VALUES(
@@ -400,6 +418,38 @@ class Trip Extends Response {
 					'$data[speed]',
 					'$data[g_force]',
 					$data[trip_id]
+				)
+			");
+
+		$trip =  $this->fetch_data("
+				SELECT * FROM trip
+				JOIN employee ON trip.driver_id = employee.employee_id
+				JOIN uv_unit ON trip.uv_id = uv_unit.uv_id
+				WHERE trip.trip_id = $data[trip_id]
+			");
+		$contact = $this->fetch_data("
+				SELECT * FROM accident_contact
+			");
+
+		$loc = json_decode($location);
+
+		$msg = "Accident alert!\nLocation: http://www.google.com/maps/place/$loc->lat,$loc->lng";
+		foreach ($contact as $key => $value) {
+			$this->util->send_message($value['contact_no'], $msg);
+		}
+		$driver_id = $trip[0]['driver_id'];
+		$this->execute_query("
+				INSERT INTO notification
+				VALUES(
+					notification_id,
+					'$msg',
+					'accident',
+					'web',
+					'driver',
+					0,
+					$driver_id,
+					0,
+					'$date'
 				)
 			");
 	}

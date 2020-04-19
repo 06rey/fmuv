@@ -10,7 +10,7 @@ class Route extends Response {
 
 	private $helper;
 	private $util;
-	private $MAX_DISTANCE = 100000;
+	private $MAX_DISTANCE = 3000;
 
 	function __construct() {
 		$this->helper = new Helper();
@@ -238,9 +238,6 @@ class Route extends Response {
 	}
 
 	private function traveling_trip($data = "") {
-		// For testing only --------------------------------------------
-		//$this->helper->set_driver_online(); 
-		// --------------------------------------------------------------
 
 		$this->helper->update_all_trip_status();
 
